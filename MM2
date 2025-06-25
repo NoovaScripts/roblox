@@ -279,7 +279,7 @@ AutoFarmTab:Button({
     Desc = "Start farming coins",
     Icon = "coins",
     Callback = function()
-        loadstring(game:HttpGet("https://raw.githubusercontent.com/l1unaahh/murdermystery2/refs/heads/main/coin"))()
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/NoovaScripts/roblox/refs/heads/main/coinfarm"))()
     end
 })
 
