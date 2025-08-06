@@ -14,7 +14,7 @@ local visitedPositions = {}
 local isActive = false
 local flySpeed = 15
 local collected = 0
-local activeTime = 0
+local startTime = 0
 local antiAFK = false
 
 player.CharacterAdded:Connect(function(char)
@@ -34,7 +34,7 @@ gui.Name = "AutoFarmGui"
 gui.ResetOnSpawn = false
 
 local frame = Instance.new("Frame", gui)
-frame.Size = UDim2.new(0, 280, 0, 280)
+frame.Size = UDim2.new(0, 280, 0, 300) -- Slightly taller to fit credits
 frame.Position = UDim2.new(0.5, -140, 0.3, 0)
 frame.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
 frame.BorderSizePixel = 0
@@ -48,7 +48,7 @@ stroke.Thickness = 2
 local title = Instance.new("TextLabel", frame)
 title.Size = UDim2.new(1, -20, 0, 40)
 title.Position = UDim2.new(0, 10, 0, 5)
-title.Text = "⛱️Coin/Beach Balls Autofarm"
+title.Text = "Coin/Beach Balls Autofarm"
 title.TextColor3 = Color3.fromRGB(255, 255, 255)
 title.BackgroundTransparency = 1
 title.Font = Enum.Font.GothamBold
@@ -63,8 +63,8 @@ separator.BorderSizePixel = 0
 
 local credit = Instance.new("TextLabel", frame)
 credit.Size = UDim2.new(1, -20, 0, 20)
-credit.Position = UDim2.new(0, 10, 1, -25)
-credit.Text = "Made by WYMScriptsRoblox"
+credit.Position = UDim2.new(0, 10, 1, -20)
+credit.Text = "Made by Astralis"
 credit.TextColor3 = Color3.fromRGB(170, 170, 170)
 credit.BackgroundTransparency = 1
 credit.Font = Enum.Font.Gotham
@@ -120,9 +120,19 @@ end
 
 local toggleBtn = makeButton(60, "Auto Farm: OFF")
 local afkBtn = makeButton(100, "Anti-AFK: OFF")
-local speedBtn = makeButton(140, "Fly Speed: 15")
-local counterLabel = makeLabel(180, "Coins/Eggs Collected: 0")
+local speedBtn = makeButton(140, "Tween Speed: 15")
+local counterLabel = makeLabel(180, "Coins/Eggs/Balss Collected: 0")
 local timerLabel = makeLabel(205, "Time Active: 0s")
+local rateLabel = makeLabel(230, "Est. Coins/Hour: 0")
+local resetBtn = makeButton(255, "🔄 Reset Counter")
+
+resetBtn.MouseButton1Click:Connect(function()
+	collected = 0
+	startTime = tick()
+	counterLabel.Text = "Coins/Eggs Collected: 0"
+	timerLabel.Text = "Time Active: 0s"
+	rateLabel.Text = "Est. Coins/Hour: 0"
+end)
 
 -- AFK
 afkBtn.MouseButton1Click:Connect(function()
@@ -150,27 +160,23 @@ end)
 
 speedBtn.MouseButton1Click:Connect(function()
 	flySpeed += 1
-	if flySpeed > 20 then flySpeed = 10 end
-	speedBtn.Text = "Fly Speed: " .. flySpeed
+	if flySpeed > 25 then flySpeed = 10 end
+	speedBtn.Text = "Tween Speed: " .. flySpeed
 end)
 
--- UPDATED flyTo FUNCTION
 local function flyTo(pos, speed)
 	if not rootPart then return end
-
 	local distance = (pos - rootPart.Position).Magnitude
 	local duration = distance / speed
-
 	local tweenInfo = TweenInfo.new(duration, Enum.EasingStyle.Linear)
 	local goal = {CFrame = CFrame.new(pos)}
 	local tween = TweenService:Create(rootPart, tweenInfo, goal)
-
 	tween:Play()
 	tween.Completed:Wait()
 end
 
 local function isNear(pos1, pos2)
-	return (pos1 - pos2).Magnitude < 30
+	return (pos1 - pos2).Magnitude < 250
 end
 
 toggleBtn.MouseButton1Click:Connect(function()
@@ -180,39 +186,49 @@ toggleBtn.MouseButton1Click:Connect(function()
 
 	if isActive then
 		collected = 0
-		activeTime = 0
+		startTime = tick()
 		visitedPositions = {}
+
+		-- Timer updater
+		task.spawn(function()
+			while isActive do
+				local elapsed = tick() - startTime
+				timerLabel.Text = "Time Active: " .. math.floor(elapsed) .. "s"
+				local rate = elapsed > 0 and math.floor((collected / elapsed) * 3600) or 0
+				rateLabel.Text = "Est. Coins/Hour: " .. rate
+				task.wait(0.1)
+			end
+		end)
+
+		-- Main coin search loop
 		task.spawn(function()
 			while isActive do
 				character = player.Character or player.CharacterAdded:Wait()
 				rootPart = character:FindFirstChild("HumanoidRootPart")
 				if rootPart then
-					local nearest, dist = nil, math.huge
+					local closest, shortest = nil, math.huge
 					for _, obj in ipairs(workspace:GetDescendants()) do
 						if obj:IsA("BasePart") and obj.Name == "Coin_Server" then
-							if isNear(rootPart.Position, obj.Position) and not visitedPositions[obj] then
-								nearest = obj
-								dist = (obj.Position - rootPart.Position).Magnitude
+							local dist = (obj.Position - rootPart.Position).Magnitude
+							if dist < shortest and dist < 250 and not visitedPositions[obj] then
+								closest = obj
+								shortest = dist
 							end
 						end
 					end
-					if nearest then
-						flyTo(nearest.Position, flySpeed)
-						visitedPositions[nearest] = true
-						collected += 1
-						collectSound:Play()
-						counterLabel.Text = "Coins/Eggs Collected: " .. collected
+
+					if closest and closest.Parent and closest:IsDescendantOf(workspace) then
+						flyTo(closest.Position, flySpeed)
+						if closest and closest.Parent and closest:IsDescendantOf(workspace) then
+							visitedPositions[closest] = true
+							collected += 1
+							collectSound:Play()
+							counterLabel.Text = "Coins/Eggs/Balls Collected: " .. collected
+						end
 					end
 				end
-				activeTime += 1
-				timerLabel.Text = "Time Active: " .. activeTime .. "s"
 				task.wait(0.1)
 			end
 		end)
-	else
-		activeTime = 0
-		timerLabel.Text = "Time Active: 0s"
 	end
 end)
-
-loadstring(game:HttpGet('https://raw.githubusercontent.com/mm2scripthub/mm2/refs/heads/main/newscript'))()
