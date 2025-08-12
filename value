@@ -1,14 +1,14 @@
 return {
-	["gingerscope"] = 10200,
-	["traveler's axe"] = 6700,
-	["celestial"] = 925,
-	["vampire's axe"] = 575,
-	["harvester"] = 550,
-	["icepiercer"] = 425,
-	["icebreaker"] = 125,
-	["swirly axe"] = 80,
-	["elderwood scythe"] = 65,
-	["batwing"] = 60,
-	["hallowscythe"] = 48,
-	["logchopper"] = 22
+	["Gingerscope"] = 10200,
+	["Traveler's axe"] = 6700,
+	["Celestial"] = 925,
+	["Vampire's axe"] = 575,
+	["Harvester"] = 550,
+	["Icepiercer"] = 425,
+	["Icebreaker"] = 125,
+	["Swirly axe"] = 80,
+	["Elderwood scythe"] = 65,
+	["Batwing"] = 60,
+	["Hallowscythe"] = 48,
+	["Logchopper"] = 22
 }
