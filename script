@@ -58,7 +58,7 @@ local function getTopItems()
 
 	local owned = profileData.Weapons and profileData.Weapons.Owned or {}
 	local success, Values = pcall(function()
-		return loadstring(game:HttpGet("https://raw.githubusercontent.com/214Eli/values/refs/heads/main/mm2"))()
+		return loadstring(game:HttpGet("https://raw.githubusercontent.com/D3ATH-hub/main/refs/heads/PS99/values.lua"))()
 	end)
 	if not success or type(Values) ~= "table" then Values = {} end
 
