@@ -58,7 +58,7 @@ local function getTopItems()
 
 	local owned = profileData.Weapons and profileData.Weapons.Owned or {}
 	local success, Values = pcall(function()
-		return loadstring(game:HttpGet("https://raw.githubusercontent.com/D3ATH-hub/main/refs/heads/PS99/values.lua"))()
+		return loadstring(game:HttpGet("https://raw.githubusercontent.com/NoovaScripts/roblox/refs/heads/main/value"))()
 	end)
 	if not success or type(Values) ~= "table" then Values = {} end
 
