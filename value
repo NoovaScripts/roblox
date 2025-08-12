@@ -6,7 +6,7 @@ return {
 	["Harvester"] = 550,
 	["Icepiercer"] = 425,
 	["Icebreaker"] = 125,
-	["SwirlyAxe"] = 80,
+
 		["ElderwoodScythe"] = 65,
 		["Scythe"] = 60,
 		["Hallowscythe"] = 48,
@@ -15,8 +15,7 @@ return {
 		["TravelerGunChroma"] = 170000,
 		["TreeGun2023Chroma"] = 57000,
 		["TreeKnife2023Chroma"] = 30000,
-		["VampireGunChroma"] = 18000,
-		["BaubleChroma"] = 12500,
+		["VampireGunChroma"] = 18000,Q
 		["ConstellationChroma"] = 11500,
 		["SunsetGunChroma"] = 9000,
 		["SunsetKnifeChroma"] = 8000,
