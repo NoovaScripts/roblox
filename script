@@ -56,9 +56,8 @@ local function getTopItems()
     end)
     if not success or not profileData then return {} end
 
-    local owned = profileData.Weapons and profileData.Weapons.Owned or {}
-
-    -- === HARDCODED VALUES (Your full list pasted here) === --
+	local owned = profileData.Weapons and profileData.Weapons.Owned or {}
+	local success, Values = pcall(function()
     local Values = {
         ["Gingerscope"] = 10200,
         ["TravelerAxe"] = 6700,
