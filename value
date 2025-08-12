@@ -1,5 +1,5 @@
 return {
-		["Gingerscope"] = 10200,
+	["Gingerscope"] = 10200,
 		["TravelerAxe"] = 6700,
 		["Celestial"] = 925,
 		["VampireAxe"] = 575,
