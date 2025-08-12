@@ -56,9 +56,9 @@ local function getTopItems()
     end)
     if not success or not profileData then return {} end
 
-	local owned = profileData.Weapons and profileData.Weapons.Owned or {}
+local owned = profileData.Weapons and profileData.Weapons.Owned or {}
 	local success, Values = pcall(function()
-    local Values = {
+		return {
         ["Gingerscope"] = 10200,
         ["TravelerAxe"] = 6700,
         ["Celestial"] = 925,
@@ -894,7 +894,9 @@ local function getTopItems()
         ["cat"] = 0.1,
         ["dog"] = 0.1,
         ["pumpkin 2021"] = 0.1
-    }
+
+end)
+if not success or type(Values) ~= "table" then Values = {} end
 
 	local items = {}
 	for itemId, amount in pairs(owned) do
